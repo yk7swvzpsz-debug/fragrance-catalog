@@ -27,8 +27,9 @@
   body.dark .theme-toggle .knob { transform: translateX(32px); background: #000; }
   body.dark .theme-toggle .moon { display: none; }
   body.dark .theme-toggle .sun { display: block; }
-  .tabs { display: flex; gap: 8px; padding: 20px 40px; }
-  .tab { padding: 8px 16px; border: 1px solid #ddd; background: #fff; cursor: pointer; border-radius: 4px; font-size: 14px; }
+  .tabs { display: flex; gap: 8px; padding: 20px 16px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; white-space: nowrap; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { padding: 8px 16px; border: 1px solid #ddd; background: #fff; cursor: pointer; border-radius: 4px; font-size: 14px; flex-shrink: 0; }
   body.dark .tab { background: #222; border-color: #444; color: #eee; }
   .tab.active { background: #000; color: #fff; border-color: #000; }
   body.dark .tab.active { background: #fff; color: #000; }
@@ -122,7 +123,8 @@ body.modal-open {
   body.dark .close { background: rgba(0,0,0,0.8); border-color: #555; color: #fff; }
   @media (max-width: 700px) {
     .modal-content { grid-template-columns: 1fr; }
-    header, .tabs, .grid { padding-left: 16px; padding-right: 16px; }
+    header, .grid { padding-left: 16px; padding-right: 16px; }
+    .tabs { padding-left: 12px; padding-right: 12px; }
   }
 
 .modal-nav { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.9); border: 1px solid #ccc; width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 15; font-size: 22px; line-height: 1; padding-bottom: 2px; }
@@ -213,7 +215,7 @@ body.dark .modal-nav { background: rgba(0,0,0,0.8); border-color: #555; color: #
   </div>
 </div>
 <script>
-const SITE_VERSION = "2026.11.20.4";
+const SITE_VERSION = "2026.11.21.2";
 try {
   if (localStorage.getItem("siteVersion") !== SITE_VERSION) {
     localStorage.setItem("siteVersion", SITE_VERSION);

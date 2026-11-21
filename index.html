@@ -215,7 +215,7 @@ body.dark .modal-nav { background: rgba(0,0,0,0.8); border-color: #555; color: #
   </div>
 </div>
 <script>
-const SITE_VERSION = "2026.11.21.2";
+const SITE_VERSION = "2026.11.21.3";
 try {
   if (localStorage.getItem("siteVersion") !== SITE_VERSION) {
     localStorage.setItem("siteVersion", SITE_VERSION);
@@ -225,6 +225,54 @@ try {
     }
   }
 } catch(e) {}
+
+// Home-screen app updater. A home-screen app often resumes an old copy of the page
+// (or loads index.html from cache), so the check above never sees the new file.
+// This fetches the live index.html bypassing all caches when the app opens or comes
+// back to the foreground, and reloads if a newer version has been published.
+(function () {
+  try {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function (rs) { rs.forEach(function (r) { r.unregister(); }); }).catch(function () {});
+    }
+    if (window.caches && caches.keys) {
+      caches.keys().then(function (ks) { ks.forEach(function (k) { caches.delete(k); }); }).catch(function () {});
+    }
+  } catch (e) {}
+  var lastCheck = 0;
+  function checkForUpdate(force) {
+    var now = Date.now();
+    if (!force && now - lastCheck < 30000) return;
+    lastCheck = now;
+    if (!window.fetch) return;
+    fetch(location.pathname + "?check=" + now, { cache: "no-store" }).then(function (r) {
+      if (!r.ok) return null;
+      var lm = r.headers.get("Last-Modified");
+      return r.text().then(function (t) { return { text: t, lm: lm }; });
+    }).then(function (res) {
+      if (!res) return;
+      var m = res.text.match(/SITE_VERSION = "([^"]+)"/);
+      var latest = m ? m[1] : "";
+      var newerFile = false;
+      var a = Date.parse(res.lm || ""), b = Date.parse(document.lastModified || "");
+      if (!isNaN(a) && !isNaN(b) && a - b > 5000) newerFile = true;
+      if ((latest && latest !== SITE_VERSION) || newerFile) {
+        var tag = latest + "|" + (res.lm || "");
+        try {
+          var prev = JSON.parse(sessionStorage.getItem("updateReload") || "{}");
+          if (prev.tag === tag && now - prev.at < 120000) return; // avoid reload loops
+          sessionStorage.setItem("updateReload", JSON.stringify({ tag: tag, at: now }));
+        } catch (e) {}
+        try { if (latest) localStorage.setItem("siteVersion", latest); } catch (e) {} // skip the second reload above
+        location.replace(location.pathname + "?v=" + encodeURIComponent(latest || now) + "&t=" + now);
+      }
+    }).catch(function () {});
+  }
+  checkForUpdate(true);
+  window.addEventListener("pageshow", function (e) { if (e.persisted) checkForUpdate(true); });
+  document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") checkForUpdate(false); });
+  window.addEventListener("focus", function () { checkForUpdate(false); });
+})();
 
 let inventory = [];
 let inventoryLoaded = false;

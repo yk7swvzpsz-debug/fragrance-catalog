@@ -1,0 +1,11 @@
+{
+  "name": "fragrance-catalog",
+  "private": true,
+  "description": "Build scripts for fragrance catalog share previews",
+  "scripts": {
+    "build-share-pages": "node scripts/build-share-pages.js"
+  },
+  "dependencies": {
+    "sharp": "^0.34.5"
+  }
+}

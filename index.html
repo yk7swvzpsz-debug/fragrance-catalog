@@ -7,7 +7,7 @@
 <meta property="og:title" content="Fragrance Catalog">
 <meta property="og:description" content="Browse available fragrances">
 <meta property="og:image" content="https://n.nordstrommedia.com/it/bcf3509b-2cfc-4422-819b-89a800d0222c.jpeg?w=1500&h=1500&crop=pad">
-<meta property="og:url" content="https://yk7swvzpsz-debug.github.io/fragrance-catalog/">
+<meta property="og:url" content="https://ambrette.store/">
 <meta name="twitter:card" content="summary_large_image">
 <style>
   .spin { display: inline-block; animation: spin 1.2s linear infinite; }
@@ -670,7 +670,7 @@ function showShareToast(msg) {
 }
 function shareItem() {
   if (!modalItem) return;
-  const url = "https://yk7swvzpsz-debug.github.io/fragrance-catalog/p/" + itemSlug(modalItem) + ".html";
+  const url = "https://ambrette.store/p/" + itemSlug(modalItem) + ".html";
   const title = modalItem.brand + " " + (modalItem.concentration ? modalItem.name + " " + modalItem.concentration : modalItem.name);
   if (navigator.share) {
     navigator.share({ title: title, url: url }).catch(function () {});

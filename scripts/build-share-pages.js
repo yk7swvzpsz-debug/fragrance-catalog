@@ -14,7 +14,7 @@ const MANIFEST_PATH = path.join(OG_DIR, 'manifest.json');
 const OG_SIZE = 1200;
 const CARD_BACKGROUND = '#fafafa';
 const SHEET_ID = '1qbzipee61G8YtRI9JAKAmtv7PNl7CtKWYD_xeKu_-cc';
-const SITE = 'https://yk7swvzpsz-debug.github.io/fragrance-catalog';
+const SITE = 'https://ambrette.store';
 const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=Inventory&t=${Date.now()}`;
 
 const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');

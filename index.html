@@ -331,6 +331,19 @@ try {
   }
 } catch(e) {}
 
+// Cache-busting reloads add ?v=&t= or ?updated= to force a fresh fetch. Once this
+// copy of the page is running, drop those params from the address bar and keep
+// any others (such as ?item=). replaceState does not reload, so it cannot loop.
+try {
+  const cleanUrl = new URL(window.location.href);
+  if (cleanUrl.searchParams.has("v") || cleanUrl.searchParams.has("t") || cleanUrl.searchParams.has("updated")) {
+    cleanUrl.searchParams.delete("v");
+    cleanUrl.searchParams.delete("t");
+    cleanUrl.searchParams.delete("updated");
+    history.replaceState(null, "", cleanUrl.pathname + cleanUrl.search + cleanUrl.hash);
+  }
+} catch (e) {}
+
 // Home-screen app updater. A home-screen app often resumes an old copy of the page
 // (or loads index.html from cache), so the check above never sees the new file.
 // This fetches the live index.html bypassing all caches when the app opens or comes
@@ -369,7 +382,12 @@ try {
           sessionStorage.setItem("updateReload", JSON.stringify({ tag: tag, at: now }));
         } catch (e) {}
         try { if (latest) localStorage.setItem("siteVersion", latest); } catch (e) {} // skip the second reload above
-        location.replace(location.pathname + "?v=" + encodeURIComponent(latest || now) + "&t=" + now);
+        var next = new URL(location.href);
+        next.searchParams.delete("updated");
+        next.searchParams.delete("check");
+        next.searchParams.set("v", String(latest || now));
+        next.searchParams.set("t", String(now));
+        location.replace(next.pathname + next.search + next.hash);
       }
     }).catch(function () {});
   }

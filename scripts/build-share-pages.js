@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Builds static p/<slug>.html pages so link previews can show each fragrance.
-// Uses the same sheet feed, Hidden filter, and itemSlug() as index.html.
+// Uses the same sheet feed, Hidden filter, itemSlug(), and Settings title as index.html.
 const fs = require('fs');
 const http = require('http');
 const https = require('https');
@@ -28,6 +28,7 @@ function takeFunction(source, startMarker, endMarker) {
 
 const parseInventory = takeFunction(html, 'function parseInventory(table) {', '\nfunction loadInventory(');
 const itemSlug = takeFunction(html, 'function itemSlug(item) {', '\nfunction showShareToast');
+const parseSettings = takeFunction(html, 'function parseSettings(table) {', '\nfunction applySettings(');
 
 function fetchText(url) {
   return new Promise((resolve, reject) => {
@@ -145,7 +146,8 @@ async function writeOgImage(input, dest) {
     .toFile(dest);
 }
 
-function pageHtml(item, slug) {
+function pageHtml(item, slug, siteTitle) {
+  const title = siteTitle || 'Fragrance Catalog';
   const image = SITE + '/images/og/' + slug + '.jpg';
   const pageUrl = SITE + '/p/' + slug + '.html';
   const back = '../?item=' + slug;
@@ -154,8 +156,8 @@ function pageHtml(item, slug) {
     + '<html lang="en">\n'
     + '<head>\n'
     + '<meta charset="UTF-8">\n'
-    + '<title>Fragrance Catalog</title>\n'
-    + '<meta property="og:title" content="Fragrance Catalog">\n'
+    + '<title>' + esc(title) + '</title>\n'
+    + '<meta property="og:title" content="' + esc(title) + '">\n'
     + '<meta property="og:description" content="Browse available fragrances">\n'
     + '<meta property="og:image" content="' + esc(image) + '">\n'
     + sizeTags
@@ -177,6 +179,21 @@ async function main() {
   const data = JSON.parse(match[1]);
   if (!data || data.status !== 'ok' || !data.table) throw new Error('Bad sheet response');
   const items = parseInventory(data.table);
+  let siteTitle = 'Fragrance Catalog';
+  try {
+    const settingsUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=Settings&t=${Date.now()}`;
+    const settingsRaw = await fetchText(settingsUrl);
+    const settingsMatch = settingsRaw.match(/setResponse\(([\s\S]*)\);\s*$/);
+    if (settingsMatch) {
+      const settingsData = JSON.parse(settingsMatch[1]);
+      if (settingsData && settingsData.status === 'ok' && settingsData.table) {
+        const parsed = parseSettings(settingsData.table);
+        if (parsed && parsed.siteTitle) siteTitle = parsed.siteTitle;
+      }
+    }
+  } catch (err) {
+    console.warn('Settings tab unavailable, using default site title');
+  }
   fs.mkdirSync(OUT_DIR, { recursive: true });
   fs.mkdirSync(OG_DIR, { recursive: true });
   const previous = readManifest();
@@ -203,7 +220,7 @@ async function main() {
       await writeOgImage(await sourceBuffer(item), imagePath);
       generated += 1;
     }
-    fs.writeFileSync(path.join(OUT_DIR, slug + '.html'), pageHtml(item, slug));
+    fs.writeFileSync(path.join(OUT_DIR, slug + '.html'), pageHtml(item, slug, siteTitle));
     written += 1;
   }
   fs.writeFileSync(MANIFEST_PATH, JSON.stringify(manifest, null, 2) + '\n');

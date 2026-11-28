@@ -320,7 +320,7 @@ body.dark .modal-nav { background: rgba(0,0,0,0.8); border-color: #555; color: #
   </div>
 </div>
 <script>
-const SITE_VERSION = "2026.11.22.2";
+const SITE_VERSION = "2026.11.28.1";
 try {
   if (localStorage.getItem("siteVersion") !== SITE_VERSION) {
     localStorage.setItem("siteVersion", SITE_VERSION);
@@ -349,6 +349,7 @@ try {
 // This fetches the live index.html bypassing all caches when the app opens or comes
 // back to the foreground, and reloads if a newer version has been published.
 (function () {
+  if (location.hostname === "localhost" || location.hostname === "127.0.0.1") return;
   try {
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.getRegistrations().then(function (rs) { rs.forEach(function (r) { r.unregister(); }); }).catch(function () {});
@@ -401,6 +402,94 @@ let inventory = [];
 let inventoryLoaded = false;
 
 const SHEET_ID = '1qbzipee61G8YtRI9JAKAmtv7PNl7CtKWYD_xeKu_-cc';
+
+const DEFAULT_SETTINGS = {
+  siteTitle: 'Fragrance Catalog',
+  tabs: { all: 'All', men: 'Men', women: 'Women', unisex: 'Unisex', sold: 'Sold' }
+};
+
+function parseSettings(table) {
+  const defaults = {
+    siteTitle: 'Fragrance Catalog',
+    tabs: { all: 'All', men: 'Men', women: 'Women', unisex: 'Unisex', sold: 'Sold' }
+  };
+  const settings = {
+    siteTitle: defaults.siteTitle,
+    tabs: Object.assign({}, defaults.tabs)
+  };
+  const rows = (table && table.rows) || [];
+  const map = {};
+  for (let i = 0; i < rows.length; i++) {
+    const c = (rows[i] && rows[i].c) || [];
+    const key = (c[0] && c[0].v != null) ? String(c[0].v).trim().toLowerCase() : '';
+    const val = (c[1] && c[1].v != null) ? String(c[1].v).trim() : '';
+    if (!key) continue;
+    map[key] = val;
+  }
+  const title = map['site title'] || map['title'] || '';
+  if (title) settings.siteTitle = title;
+  const tabNames = ['all', 'men', 'women', 'unisex', 'sold'];
+  for (let i = 0; i < tabNames.length; i++) {
+    const key = tabNames[i];
+    const val = map['tab: ' + key] || map['tab ' + key] || '';
+    if (val) settings.tabs[key] = val;
+  }
+  return settings;
+}
+
+function applySettings(settings) {
+  const safe = settings || parseSettings(null);
+  const title = safe.siteTitle || DEFAULT_SETTINGS.siteTitle;
+  document.title = title;
+  const heading = document.querySelector('header h1');
+  if (heading) heading.textContent = title;
+  const og = document.querySelector('meta[property="og:title"]');
+  if (og) og.setAttribute('content', title);
+  document.querySelectorAll('.tab[data-filter]').forEach(function (tab) {
+    const key = tab.dataset.filter;
+    if (safe.tabs[key]) tab.textContent = safe.tabs[key];
+  });
+}
+
+function loadSheetJsonp(sheetName, handlerName, onTable, onError) {
+  window[handlerName] = function (data) {
+    try {
+      if (!data || data.status !== 'ok' || !data.table) throw new Error('Bad sheet response');
+      onTable(data.table);
+    } catch (err) {
+      console.error('Failed to parse ' + sheetName + ':', err);
+      if (onError) onError(err);
+    }
+  };
+  const script = document.createElement('script');
+  script.src = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/gviz/tq?tqx=out:json;responseHandler:' + encodeURIComponent(handlerName) + '&sheet=' + encodeURIComponent(sheetName) + '&t=' + Date.now();
+  script.onerror = function () {
+    console.error('Failed to load ' + sheetName);
+    if (onError) onError();
+  };
+  document.head.appendChild(script);
+}
+
+function loadSettingsFromSheet() {
+  loadSheetJsonp('Settings', 'handleCatalogSettings', function (table) {
+    applySettings(parseSettings(table));
+  }, function () {
+    applySettings(parseSettings(null));
+  });
+}
+
+function loadSettings() {
+  // Local previews can feed a Settings table from settings.json. The live
+  // site never hits this path and always reads the public Catalog Settings tab.
+  if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+    fetch('settings.json?t=' + Date.now())
+      .then(function (r) { if (!r.ok) throw new Error('no local settings'); return r.json(); })
+      .then(function (table) { applySettings(parseSettings(table)); })
+      .catch(function () { loadSettingsFromSheet(); });
+    return;
+  }
+  loadSettingsFromSheet();
+}
 
 // Every field is found by its header (case-insensitive, trimmed). Hidden (Yes)
 // is omitted from the catalog; Upon Request (Yes) is a badge flag. If a label
@@ -514,6 +603,7 @@ function loadInventory() {
 }
 
 loadInventory();
+loadSettings();
 
 function toggleTheme() {
   document.body.classList.toggle("dark");
